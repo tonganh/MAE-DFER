@@ -184,6 +184,14 @@ If you have any questions, please feel free to reach me out at `licai.sun@oulu.f
 
 This project is built upon [VideoMAE](https://github.com/MCG-NJU/VideoMAE). Thanks for their great codebase.
 
+## Running
+``` bash
+python infer_video.py \
+  --video happy_emotion.mp4 \
+  --checkpoint /mnt/disk1/aiotlab/anhtn/emotion_recognition/MAE-DFER/saved/model/finetuning/dfew/dfew_fold01/checkpoint.pth \
+  --device cuda
+```
+
 ## ✏️ Citation
 
 If you think this project is helpful, please feel free to leave a star⭐️ and cite our paper:
