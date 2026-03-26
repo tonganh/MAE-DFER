@@ -1,0 +1,4 @@
+einops
+timm
+opencv-python
+decord
