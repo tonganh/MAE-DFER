@@ -590,6 +590,13 @@ class VisionTransformer(nn.Module):
 
 @register_model
 def vit_base_patch16_160(pretrained=False, **kwargs):
+    kwargs.pop("pretrained_cfg", None)
+    kwargs.pop("pretrained_cfg_overlay", None)
+    kwargs.pop("checkpoint_path", None)
+    kwargs.pop("cache_dir", None)
+    kwargs.pop("scriptable", None)
+    kwargs.pop("exportable", None)
+    kwargs.pop("no_jit", None)
     model = VisionTransformer(
         img_size=160,
         patch_size=16, embed_dim=768, depth=12, num_heads=12, mlp_ratio=4, qkv_bias=True,
@@ -600,6 +607,13 @@ def vit_base_patch16_160(pretrained=False, **kwargs):
 
 @register_model
 def vit_base_dim512_no_depth_patch16_160(pretrained=False, **kwargs):
+    kwargs.pop("pretrained_cfg", None)
+    kwargs.pop("pretrained_cfg_overlay", None)
+    kwargs.pop("checkpoint_path", None)
+    kwargs.pop("cache_dir", None)
+    kwargs.pop("scriptable", None)
+    kwargs.pop("exportable", None)
+    kwargs.pop("no_jit", None)
     model = VisionTransformer(
         img_size=160,
         patch_size=16, embed_dim=512, num_heads=8, mlp_ratio=4, qkv_bias=True,

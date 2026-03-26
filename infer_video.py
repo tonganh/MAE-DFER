@@ -25,7 +25,10 @@ DFEW_CLASSES = [
 
 
 def load_checkpoint(model, path):
-    ckpt = torch.load(path, map_location="cpu")
+    try:
+        ckpt = torch.load(path, map_location="cpu", weights_only=False)
+    except TypeError:
+        ckpt = torch.load(path, map_location="cpu")
     if isinstance(ckpt, dict) and "model" in ckpt:
         state_dict = ckpt["model"]
     elif isinstance(ckpt, dict) and "state_dict" in ckpt:
