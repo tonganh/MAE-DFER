@@ -1,1 +1,5 @@
 *.pth
+.env
+.venv
+__pycache__
+api_saved/

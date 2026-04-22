@@ -1,8 +1,10 @@
 einops
 timm
-opencv-python
+opencv-python-headless
 decord
+scipy
+numpy
+pillow
 fastapi
 uvicorn[standard]
 python-multipart
-httpx

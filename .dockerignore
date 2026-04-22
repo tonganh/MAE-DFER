@@ -1,0 +1,14 @@
+.venv
+__pycache__
+.git
+.gitignore
+*.pyc
+*.pyo
+.pytest_cache
+.mypy_cache
+.cursor
+*.md
+figs
+*.mp4
+*.avi
+*.webm

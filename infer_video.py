@@ -2,6 +2,7 @@ import argparse
 import glob
 import os
 from collections import OrderedDict
+from types import SimpleNamespace
 
 import numpy as np
 import torch
@@ -11,7 +12,8 @@ from timm.models import create_model
 import modeling_finetune
 import video_transforms
 import volume_transforms
-from decord import VideoReader, cpu
+import cv2
+from decord import DECORDError, VideoReader, cpu
 
 DFEW_CLASSES = [
     "Happy",
@@ -77,12 +79,37 @@ def load_video_buffer(path, clip_len, frame_sample_rate):
         raise FileNotFoundError(path)
     if os.path.getsize(path) < 1024:
         raise ValueError(f"File too small: {path}")
-    vr = VideoReader(path, num_threads=1, ctx=cpu(0))
-    all_index = [x for x in range(0, len(vr), frame_sample_rate)]
-    while len(all_index) < clip_len:
-        all_index.append(all_index[-1])
-    vr.seek(0)
-    return vr.get_batch(all_index).asnumpy()
+    try:
+        vr = VideoReader(path, num_threads=1, ctx=cpu(0))
+        all_index = [x for x in range(0, len(vr), frame_sample_rate)]
+        while len(all_index) < clip_len:
+            all_index.append(all_index[-1])
+        vr.seek(0)
+        return vr.get_batch(all_index).asnumpy()
+    except DECORDError:
+        return _load_video_buffer_opencv(path, clip_len, frame_sample_rate)
+
+
+def _load_video_buffer_opencv(path, clip_len, frame_sample_rate):
+    cap = cv2.VideoCapture(path)
+    if not cap.isOpened():
+        raise ValueError(f"Could not open video with OpenCV: {path}")
+    picked = []
+    frame_idx = 0
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        if frame_idx % frame_sample_rate == 0:
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            picked.append(frame)
+        frame_idx += 1
+    cap.release()
+    if not picked:
+        raise ValueError(f"No frames read from {path}")
+    while len(picked) < clip_len:
+        picked.append(picked[-1])
+    return np.stack(picked, axis=0)
 
 
 def build_model(args):
@@ -165,6 +192,63 @@ def preprocess_test_views(buffer, clip_len, short_side_size, test_num_segment, t
     return torch.cat(views, dim=0)
 
 
+def default_inference_args():
+    args = SimpleNamespace(
+        nb_classes=7,
+        model="vit_base_dim512_no_depth_patch16_160",
+        depth=16,
+        num_frames=16,
+        num_segments=1,
+        sampling_rate=4,
+        input_size=160,
+        short_side_size=160,
+        tubelet_size=2,
+        test_num_segment=2,
+        test_num_crop=2,
+        attn_type="local_global",
+        lg_region_size=(2, 5, 10),
+        lg_first_attn_type="self",
+        lg_third_attn_type="cross",
+        lg_classify_token_type="region",
+        lg_attn_param_sharing_first_third=False,
+        lg_attn_param_sharing_all=False,
+        lg_no_second=False,
+        lg_no_third=False,
+        use_mean_pooling=True,
+        init_scale=0.001,
+    )
+    return args
+
+
+def predict_video_file(video_path, model, device, args):
+    buffer = load_video_buffer(video_path, args.num_frames, args.sampling_rate)
+    batch = preprocess_test_views(
+        buffer,
+        args.num_frames,
+        args.short_side_size,
+        args.test_num_segment,
+        args.test_num_crop,
+    )
+    batch = batch.to(device)
+    probs_list = []
+    use_amp = device.type == "cuda"
+    with torch.cuda.amp.autocast(enabled=use_amp):
+        with torch.no_grad():
+            for i in range(batch.shape[0]):
+                logits = model(batch[i : i + 1])
+                probs_list.append(softmax(logits.float().cpu().numpy().ravel()))
+    avg_prob = np.mean(probs_list, axis=0)
+    pred_idx = int(np.argmax(avg_prob))
+    name = DFEW_CLASSES[pred_idx]
+    probs = {c: float(avg_prob[i]) for i, c in enumerate(DFEW_CLASSES)}
+    return {
+        "predicted_class_index": pred_idx,
+        "predicted_label": name,
+        "class_names": list(DFEW_CLASSES),
+        "probabilities": probs,
+    }
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--video", type=str, required=True, help="Path to .mp4/.avi or folder of frames")
@@ -199,32 +283,16 @@ def main():
     args.lg_region_size = tuple(args.lg_region_size)
 
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
-    buffer = load_video_buffer(
-        args.video, args.num_frames, args.sampling_rate
-    )
-    batch = preprocess_test_views(
-        buffer,
-        args.num_frames,
-        args.short_side_size,
-        args.test_num_segment,
-        args.test_num_crop,
-    )
-    batch = batch.to(device)
 
     model = build_model(args)
     load_checkpoint(model, args.checkpoint)
     model.eval()
     model.to(device)
 
-    probs_list = []
-    with torch.cuda.amp.autocast(enabled=device.type == "cuda"):
-        with torch.no_grad():
-            for i in range(batch.shape[0]):
-                logits = model(batch[i : i + 1])
-                probs_list.append(softmax(logits.float().cpu().numpy().ravel()))
-    avg_prob = np.mean(probs_list, axis=0)
-    pred_idx = int(np.argmax(avg_prob))
-    name = DFEW_CLASSES[pred_idx]
+    out = predict_video_file(args.video, model, device, args)
+    pred_idx = out["predicted_class_index"]
+    name = out["predicted_label"]
+    avg_prob = np.array([out["probabilities"][c] for c in DFEW_CLASSES])
     print("Predicted class index:", pred_idx)
     print("Predicted label (DFEW):", name)
     print("Class probabilities:")

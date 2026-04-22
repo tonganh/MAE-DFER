@@ -1,0 +1,8 @@
+services:
+  api:
+    build:
+      args:
+        PYTORCH_INDEX: https://download.pytorch.org/whl/cu121
+    environment:
+      DEVICE: cuda
+    gpus: all
