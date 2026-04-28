@@ -3,8 +3,10 @@ import json
 import os
 import tempfile
 import threading
+import time
 import uuid
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 
 import httpx
@@ -111,6 +113,9 @@ def _resolve_suffix(filename: str, data: bytes) -> str:
 def _predict_bytes_sync(data: bytes, filename: str) -> dict:
     if len(data) < 1024:
         raise ValueError("File too small or empty")
+    t0 = time.perf_counter()
+    start_ts = datetime.now(timezone.utc).isoformat()
+    print(f"[predict] start_ts={start_ts} filename={filename!r} bytes={len(data)}", flush=True)
     suffix = _resolve_suffix(filename, data)
     if "API_SAVE_DIR" not in os.environ:
         save_root_raw = "api_saved"
@@ -140,9 +145,12 @@ def _predict_bytes_sync(data: bytes, filename: str) -> dict:
                 pass
             raise
     try:
+        t_video0 = time.perf_counter()
         with _infer_lock:
             out = infer_video.predict_video_file(path, _model, _device, _inference_args)
+        t_video1 = time.perf_counter()
         out["filename"] = filename or "video"
+        t_whisper0 = time.perf_counter()
         try:
             speech_out = speech_emotion.predict_from_video_bytes(
                 data,
@@ -152,6 +160,27 @@ def _predict_bytes_sync(data: bytes, filename: str) -> dict:
             out["speech_emotion_whisper"] = speech_out.get("whisper")
         except Exception as e:
             out["speech_emotion_whisper_error"] = str(e)
+        t_whisper1 = time.perf_counter()
+        t1 = time.perf_counter()
+        end_ts = datetime.now(timezone.utc).isoformat()
+        out["timing"] = {
+            "start_ts": start_ts,
+            "end_ts": end_ts,
+            "elapsed_sec": round(t1 - t0, 4),
+            "video_infer_sec": round(t_video1 - t_video0, 4),
+            "whisper_sec": round(t_whisper1 - t_whisper0, 4),
+        }
+        print(
+            "[predict] end_ts="
+            + end_ts
+            + " elapsed_sec="
+            + str(out["timing"]["elapsed_sec"])
+            + " video_infer_sec="
+            + str(out["timing"]["video_infer_sec"])
+            + " whisper_sec="
+            + str(out["timing"]["whisper_sec"]),
+            flush=True,
+        )
         if sub is not None:
             out["saved_dir"] = str(sub.resolve())
             out["saved_video"] = str(Path(path).resolve())
