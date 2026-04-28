@@ -19,4 +19,4 @@ services:
       API_SAVE_DIR: /data/api_saved
     volumes:
       - ${CHECKPOINT_DIR:-./saved/model}:/models:ro
-      - ${API_SAVE_HOST_DIR:-./api_saved}:/data/api_saved
+      - ${API_SAVE_HOST_DIR:-./api_saved}:/data/api_saved[]

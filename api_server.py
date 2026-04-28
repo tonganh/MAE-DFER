@@ -14,6 +14,7 @@ from fastapi import FastAPI, File, HTTPException, UploadFile, WebSocket, WebSock
 from fastapi.middleware.cors import CORSMiddleware
 
 import infer_video
+import speech_emotion_infer as speech_emotion
 
 _DEFAULT_CHECKPOINT = ("./saved/model/finetuning/dfew/dfrew_fold05/checkpoint_dfew_fold5.pth")
 _UPSTREAM_BASE = os.environ.get("UPSTREAM_PREDICT_BASE", "http://localhost:8001")
@@ -83,6 +84,7 @@ def health():
         "checkpoint": os.environ.get("CHECKPOINT_PATH", _DEFAULT_CHECKPOINT),
         "vega_predict_url": _VEGA_PREDICT_URL,
         "speech_emotion_predict_url": _SPEECH_EMOTION_PREDICT_URL,
+        "video_speech_emotion_path": "/predict/video-speech-emotion",
     }
 
 
@@ -141,6 +143,15 @@ def _predict_bytes_sync(data: bytes, filename: str) -> dict:
         with _infer_lock:
             out = infer_video.predict_video_file(path, _model, _device, _inference_args)
         out["filename"] = filename or "video"
+        try:
+            speech_out = speech_emotion.predict_from_video_bytes(
+                data,
+                filename or "video",
+                speech_emotion.SpeechBackend.whisper,
+            )
+            out["speech_emotion_whisper"] = speech_out.get("whisper")
+        except Exception as e:
+            out["speech_emotion_whisper_error"] = str(e)
         if sub is not None:
             out["saved_dir"] = str(sub.resolve())
             out["saved_video"] = str(Path(path).resolve())
@@ -227,6 +238,35 @@ async def predict_vega(file: UploadFile = File(...)):
 @app.post("/predict-speech-emotion")
 async def predict_speech_emotion(file: UploadFile = File(...)):
     return await _forward_video_multipart_to_url(_SPEECH_EMOTION_PREDICT_URL, file)
+
+
+@app.post("/predict/video-speech-emotion")
+async def predict_video_speech_emotion(
+    file: UploadFile = File(...),
+    backend: speech_emotion.SpeechBackend = speech_emotion.SpeechBackend.whisper,
+):
+    name = file.filename or "video"
+    suffix = Path(name).suffix.lower()
+    if suffix and suffix not in _ALLOWED_SUFFIX:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file type {suffix!r}. Use one of: {sorted(_ALLOWED_SUFFIX)}",
+        )
+    content = await file.read()
+    try:
+        return await asyncio.to_thread(
+            speech_emotion.predict_from_video_bytes,
+            content,
+            name,
+            backend,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except RuntimeError as e:
+        raise HTTPException(
+            status_code=422,
+            detail={"error": "audio_extraction_failed", "message": str(e)},
+        ) from e
 
 
 @app.websocket("/ws/predict")

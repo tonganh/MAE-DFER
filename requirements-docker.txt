@@ -8,3 +8,8 @@ pillow
 fastapi
 uvicorn[standard]
 python-multipart
+transformers
+librosa
+soundfile
+accelerate
+safetensors
