@@ -68,6 +68,8 @@ More samples without showing frame difference:
 
 ## 🔨 Installation
 
+### Training and research (original paper setup)
+
 Main prerequisites:
 
 * `Python 3.8`
@@ -83,6 +85,22 @@ Main prerequisites:
 * `tensorboardX=2.6.1`
 
 If some are missing, please refer to [environment.yml](environment.yml) for more details.
+
+### HTTP API and local inference (`infer_video.py`, `api_server.py`)
+
+Install Python dependencies from [requirements.txt](requirements.txt) (FastAPI, uvicorn, timm, decord, transformers, librosa, httpx, etc.):
+
+```bash
+pip install -r requirements.txt
+```
+
+Install **PyTorch** separately for your platform ([pytorch.org](https://pytorch.org)) so the CUDA build matches your driver. `requirements.txt` does not pin torch.
+
+The speech path used by `api_server.py` expects **`ffmpeg`** on `PATH` (audio extraction from uploaded video).
+
+Optional: **`gdown`** to fetch Google Drive checkpoints from the links in the fine-tuning tables below.
+
+Docker image dependencies are listed in [requirements-docker.txt](requirements-docker.txt); the [Dockerfile](Dockerfile) installs PyTorch from `PYTORCH_INDEX` (default CPU wheel; override for CUDA builds).
 
 
 ## ➡️ Data Preparation
@@ -184,13 +202,79 @@ If you have any questions, please feel free to reach me out at `licai.sun@oulu.f
 
 This project is built upon [VideoMAE](https://github.com/MCG-NJU/VideoMAE). Thanks for their great codebase.
 
-## Running
-``` bash
+## Running inference and HTTP API
+
+### Download a DFEW fine-tuned checkpoint (example)
+
+From the repository root, create a directory and download with **gdown** (file IDs match the checkpoint links in the DFEW table above).
+
+Default path expected by [api_server.py](api_server.py) (fold 5):
+
+```bash
+mkdir -p saved/model/finetuning/dfew/dfrew_fold05
+gdown "https://drive.google.com/uc?id=1wmXO4M2kjpAOnvof8CmpJE6wUrxMUOgw" -O saved/model/finetuning/dfew/dfrew_fold05/checkpoint_dfew_fold5.pth
+```
+
+Fold 1 (README-style layout); set `CHECKPOINT_PATH` when running the API:
+
+```bash
+mkdir -p saved/model/finetuning/dfew/dfew_fold01
+gdown "https://drive.google.com/uc?id=1wRxwEZlrc3z3DqQ84xm_olmqRsj2obH3" -O saved/model/finetuning/dfew/dfew_fold01/checkpoint.pth
+```
+
+### CLI: single video (`infer_video.py`)
+
+```bash
 python infer_video.py \
   --video happy_emotion.mp4 \
-  --checkpoint /mnt/disk1/aiotlab/anhtn/emotion_recognition/MAE-DFER/saved/model/finetuning/dfew/dfew_fold01/checkpoint.pth \
+  --checkpoint saved/model/finetuning/dfew/dfew_fold01/checkpoint.pth \
   --device cuda
 ```
+
+### HTTP API (`api_server.py`)
+
+```bash
+python api_server.py
+```
+
+Or:
+
+```bash
+python -m uvicorn api_server:app --host 0.0.0.0 --port 8000 --workers 1
+```
+
+Useful environment variables:
+
+| Variable | Purpose |
+| -------- | ------- |
+| `CHECKPOINT_PATH` | Path to the fine-tuned `.pth` (default: `./saved/model/finetuning/dfew/dfrew_fold05/checkpoint_dfew_fold5.pth`) |
+| `DEVICE` | `cuda` or `cpu` (falls back to CPU if CUDA unavailable) |
+| `API_HOST` / `API_PORT` | Bind address and port |
+| `WS_MAX_SIZE` | Max WebSocket message size (default 50 MiB) |
+| `API_SAVE_DIR` | If set, persist uploads and `result.json` under this directory |
+| `STREAM_SEGMENT_SEC` | Hint for WebSocket segments |
+| `UPSTREAM_PREDICT_BASE`, `VEGA_PREDICT_URL`, `SPEECH_EMOTION_PREDICT_URL` | Optional upstream proxies |
+| `HTTPX_TRUST_ENV` | Set to `1`/`true` if proxied httpx should use env proxies |
+| `API_INCLUDE_RESOURCE_STATS` | Set to `1`/`true` to add per-request `resource_stats` (RSS on Linux, process CPU time, CUDA peak memory via PyTorch) |
+
+First `/predict` call may download the Hugging Face **Whisper speech-emotion** weights; ensure outbound HTTPS and enough disk for the cache.
+
+### Docker
+
+```bash
+docker compose up --build
+```
+
+Mount your checkpoints: host `./saved/model` is mapped read-only to `/models` in the container. Override `CHECKPOINT_PATH`, `DEVICE`, `API_PORT`, etc. via `.env` or the shell. Default compose uses **CPU** PyTorch; for GPU, supply a CUDA-capable base or `PYTORCH_INDEX` and NVIDIA runtime per your cloud provider.
+
+### Deployment hardware (rough guide)
+
+| Mode | GPU VRAM | System RAM | vCPU | Notes |
+| ---- | -------- | ---------- | ---- | ----- |
+| GPU inference | **≥ 8 GB** (12–16 GB comfortable) | **≥ 8 GB** (16 GB comfortable) | **4+** | Video MAE-DFER + Whisper-large on CUDA; sequential inference per instance (`workers=1`). |
+| CPU only | — | **≥ 16 GB** (32 GB comfortable) | **8+** | Much slower; compose defaults to CPU torch. |
+
+Reserve **30–50 GB** disk for the image, DFEW checkpoint, and Hugging Face cache.
 
 ## ✏️ Citation
 
