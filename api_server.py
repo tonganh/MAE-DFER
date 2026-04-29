@@ -34,6 +34,40 @@ _device = None
 _infer_lock = threading.Lock()
 
 
+def _env_truthy(name: str) -> bool:
+    v = os.environ.get(name, "").strip().lower()
+    return v in ("1", "true", "yes")
+
+
+def _vm_rss_kb():
+    try:
+        with open("/proc/self/status", encoding="utf-8") as f:
+            for line in f:
+                if line.startswith("VmRSS:"):
+                    return int(line.split()[1])
+    except OSError:
+        return None
+
+
+def _kb_to_mib(kb):
+    if kb is None:
+        return None
+    return round(kb / 1024, 2)
+
+
+def _gpu_reset_peak(device):
+    if device.type == "cuda" and torch.cuda.is_available():
+        torch.cuda.synchronize(device)
+        torch.cuda.reset_peak_memory_stats(device)
+
+
+def _gpu_peak_mib(device):
+    if device.type != "cuda" or not torch.cuda.is_available():
+        return None
+    torch.cuda.synchronize(device)
+    return round(torch.cuda.max_memory_allocated(device) / (1024 * 1024), 2)
+
+
 def _httpx_trust_env() -> bool:
     v = os.environ.get("HTTPX_TRUST_ENV", "").strip().lower()
     return v in ("1", "true", "yes")
@@ -145,11 +179,21 @@ def _predict_bytes_sync(data: bytes, filename: str) -> dict:
                 pass
             raise
     try:
+        want_res = _env_truthy("API_INCLUDE_RESOURCE_STATS")
+        if want_res:
+            rss_start = _vm_rss_kb()
+            cpu_start = time.process_time()
+            _gpu_reset_peak(_device)
         t_video0 = time.perf_counter()
         with _infer_lock:
             out = infer_video.predict_video_file(path, _model, _device, _inference_args)
         t_video1 = time.perf_counter()
         out["filename"] = filename or "video"
+        if want_res:
+            rss_after_video = _vm_rss_kb()
+            cpu_after_video = time.process_time()
+            gpu_video_peak_mib = _gpu_peak_mib(_device)
+            _gpu_reset_peak(_device)
         t_whisper0 = time.perf_counter()
         try:
             speech_out = speech_emotion.predict_from_video_bytes(
@@ -170,6 +214,26 @@ def _predict_bytes_sync(data: bytes, filename: str) -> dict:
             "video_infer_sec": round(t_video1 - t_video0, 4),
             "whisper_sec": round(t_whisper1 - t_whisper0, 4),
         }
+        if want_res:
+            rss_end = _vm_rss_kb()
+            cpu_end = time.process_time()
+            gpu_whisper_peak_mib = _gpu_peak_mib(_device)
+            out["resource_stats"] = {
+                "rss_resident_set_mib": {
+                    "before_video_infer": _kb_to_mib(rss_start),
+                    "after_video_infer": _kb_to_mib(rss_after_video),
+                    "after_request": _kb_to_mib(rss_end),
+                },
+                "process_cpu_sec": {
+                    "video_infer": round(cpu_after_video - cpu_start, 4),
+                    "speech_whisper": round(cpu_end - cpu_after_video, 4),
+                    "video_plus_whisper": round(cpu_end - cpu_start, 4),
+                },
+                "gpu_cuda_peak_reserved_mib": {
+                    "video_infer": gpu_video_peak_mib,
+                    "speech_whisper": gpu_whisper_peak_mib,
+                },
+            }
         print(
             "[predict] end_ts="
             + end_ts
