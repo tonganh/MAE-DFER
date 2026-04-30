@@ -25,8 +25,9 @@ COPY requirements-docker.txt /tmp/requirements-docker.txt
 RUN pip install torch torchvision --index-url "${PYTORCH_INDEX}" \
     && pip install -r /tmp/requirements-docker.txt
 
-COPY api_server.py infer_video.py speech_emotion_infer.py modeling_finetune.py video_transforms.py volume_transforms.py \
-    rand_augment.py random_erasing.py functional.py /app/
+COPY pyproject.toml /app/pyproject.toml
+COPY mae_dfer /app/mae_dfer
+COPY api_server.py infer_video.py /app/
 
 EXPOSE 8000
 

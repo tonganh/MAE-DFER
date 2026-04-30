@@ -4,9 +4,9 @@ import math
 import sys
 from typing import Iterable, Optional
 import torch
-from mixup import Mixup
+from mae_dfer.training.mixup import Mixup
 from timm.utils import accuracy, ModelEma
-import utils
+from mae_dfer.training import utils
 from scipy.special import softmax
 import pickle
 

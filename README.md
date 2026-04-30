@@ -102,6 +102,10 @@ Optional: **`gdown`** to fetch Google Drive checkpoints from the links in the fi
 
 Docker image dependencies are listed in [requirements-docker.txt](requirements-docker.txt); the [Dockerfile](Dockerfile) installs PyTorch from `PYTORCH_INDEX` (default CPU wheel; override for CUDA builds).
 
+### Code layout
+
+Library code lives under the `mae_dfer` package: `mae_dfer/models` (ViT / LGI-Former), `mae_dfer/data` (datasets and video transforms), `mae_dfer/training` (engines, optimizers, `utils`), `mae_dfer/inference` (video and speech helpers), `mae_dfer/api` (FastAPI app), and `mae_dfer/cli` (distributed training entrypoints). Thin wrappers at the repo root (`run_class_finetuning.py`, `run_mae_pretraining.py`, `infer_video.py`, `api_server.py`) keep existing shell scripts and Docker commands unchanged. Optional: `pip install -e .` using [pyproject.toml](pyproject.toml). API artifact output defaults to `data/api_saved` (override with `API_SAVE_DIR` or `API_SAVE_ROOT`).
+
 
 ## ➡️ Data Preparation
 
