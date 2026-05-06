@@ -1,0 +1,264 @@
+[
+  {
+    "readme_weight": "finetuning/dfew/fold01/checkpoint.pth",
+    "checkpoint": "/mnt/disk1/aiotlab/anhtn/emotion_recognition/MAE-DFER/saved/model/readme_checkpoints/finetuning/dfew/fold01/checkpoint.pth",
+    "dataset": "dfew",
+    "skipped": false,
+    "skip_reason": null,
+    "returncode": 0,
+    "prediction": {
+      "class_index": 2,
+      "label": "Neutral",
+      "probabilities": {
+        "Happy": 0.0849,
+        "Sad": 0.1845,
+        "Neutral": 0.3957,
+        "Angry": 0.0959,
+        "Surprise": 0.1417,
+        "Disgust": 0.0183,
+        "Fear": 0.079
+      }
+    },
+    "parse_ok": true
+  },
+  {
+    "readme_weight": "finetuning/dfew/fold02/checkpoint.pth",
+    "checkpoint": "/mnt/disk1/aiotlab/anhtn/emotion_recognition/MAE-DFER/saved/model/readme_checkpoints/finetuning/dfew/fold02/checkpoint.pth",
+    "dataset": "dfew",
+    "skipped": false,
+    "skip_reason": null,
+    "returncode": 0,
+    "prediction": {
+      "class_index": 1,
+      "label": "Sad",
+      "probabilities": {
+        "Happy": 0.1344,
+        "Sad": 0.2966,
+        "Neutral": 0.2948,
+        "Angry": 0.0915,
+        "Surprise": 0.103,
+        "Disgust": 0.0183,
+        "Fear": 0.0614
+      }
+    },
+    "parse_ok": true
+  },
+  {
+    "readme_weight": "finetuning/dfew/fold03/checkpoint.pth",
+    "checkpoint": "/mnt/disk1/aiotlab/anhtn/emotion_recognition/MAE-DFER/saved/model/readme_checkpoints/finetuning/dfew/fold03/checkpoint.pth",
+    "dataset": "dfew",
+    "skipped": false,
+    "skip_reason": null,
+    "returncode": 0,
+    "prediction": {
+      "class_index": 2,
+      "label": "Neutral",
+      "probabilities": {
+        "Happy": 0.1009,
+        "Sad": 0.2417,
+        "Neutral": 0.3001,
+        "Angry": 0.086,
+        "Surprise": 0.1449,
+        "Disgust": 0.0195,
+        "Fear": 0.1068
+      }
+    },
+    "parse_ok": true
+  },
+  {
+    "readme_weight": "finetuning/dfew/fold04/checkpoint.pth",
+    "checkpoint": "/mnt/disk1/aiotlab/anhtn/emotion_recognition/MAE-DFER/saved/model/readme_checkpoints/finetuning/dfew/fold04/checkpoint.pth",
+    "dataset": "dfew",
+    "skipped": false,
+    "skip_reason": null,
+    "returncode": 0,
+    "prediction": {
+      "class_index": 2,
+      "label": "Neutral",
+      "probabilities": {
+        "Happy": 0.091,
+        "Sad": 0.252,
+        "Neutral": 0.3782,
+        "Angry": 0.0678,
+        "Surprise": 0.1143,
+        "Disgust": 0.0203,
+        "Fear": 0.0764
+      }
+    },
+    "parse_ok": true
+  },
+  {
+    "readme_weight": "finetuning/dfew/fold05/checkpoint.pth",
+    "checkpoint": "/mnt/disk1/aiotlab/anhtn/emotion_recognition/MAE-DFER/saved/model/readme_checkpoints/finetuning/dfew/fold05/checkpoint.pth",
+    "dataset": "dfew",
+    "skipped": false,
+    "skip_reason": null,
+    "returncode": 0,
+    "prediction": {
+      "class_index": 2,
+      "label": "Neutral",
+      "probabilities": {
+        "Happy": 0.1357,
+        "Sad": 0.2454,
+        "Neutral": 0.3356,
+        "Angry": 0.0749,
+        "Surprise": 0.1227,
+        "Disgust": 0.0217,
+        "Fear": 0.064
+      }
+    },
+    "parse_ok": true
+  },
+  {
+    "readme_weight": "finetuning/ferv39k/checkpoint.pth",
+    "checkpoint": "/mnt/disk1/aiotlab/anhtn/emotion_recognition/MAE-DFER/saved/model/readme_checkpoints/finetuning/ferv39k/checkpoint.pth",
+    "dataset": "ferv39k",
+    "skipped": false,
+    "skip_reason": null,
+    "returncode": 0,
+    "prediction": {
+      "class_index": 3,
+      "label": "Angry",
+      "probabilities": {
+        "Happy": 0.1358,
+        "Sad": 0.227,
+        "Neutral": 0.2065,
+        "Angry": 0.2333,
+        "Surprise": 0.0785,
+        "Disgust": 0.0459,
+        "Fear": 0.0731
+      }
+    },
+    "parse_ok": true
+  },
+  {
+    "readme_weight": "finetuning/mafw/fold01/checkpoint.pth",
+    "checkpoint": "/mnt/disk1/aiotlab/anhtn/emotion_recognition/MAE-DFER/saved/model/readme_checkpoints/finetuning/mafw/fold01/checkpoint.pth",
+    "dataset": "mafw",
+    "skipped": false,
+    "skip_reason": null,
+    "returncode": 0,
+    "prediction": {
+      "class_index": 5,
+      "label": "sadness",
+      "probabilities": {
+        "anger": 0.1392,
+        "disgust": 0.0332,
+        "fear": 0.0753,
+        "happiness": 0.0909,
+        "neutral": 0.1666,
+        "sadness": 0.195,
+        "surprise": 0.1387,
+        "contempt": 0.0197,
+        "anxiety": 0.093,
+        "helplessness": 0.0299,
+        "disappointment": 0.0186
+      }
+    },
+    "parse_ok": true
+  },
+  {
+    "readme_weight": "finetuning/mafw/fold02/checkpoint.pth",
+    "checkpoint": "/mnt/disk1/aiotlab/anhtn/emotion_recognition/MAE-DFER/saved/model/readme_checkpoints/finetuning/mafw/fold02/checkpoint.pth",
+    "dataset": "mafw",
+    "skipped": false,
+    "skip_reason": null,
+    "returncode": 0,
+    "prediction": {
+      "class_index": 6,
+      "label": "surprise",
+      "probabilities": {
+        "anger": 0.1427,
+        "disgust": 0.0394,
+        "fear": 0.1045,
+        "happiness": 0.0596,
+        "neutral": 0.1336,
+        "sadness": 0.1291,
+        "surprise": 0.2304,
+        "contempt": 0.017,
+        "anxiety": 0.1013,
+        "helplessness": 0.0241,
+        "disappointment": 0.0183
+      }
+    },
+    "parse_ok": true
+  },
+  {
+    "readme_weight": "finetuning/mafw/fold03/checkpoint.pth",
+    "checkpoint": "/mnt/disk1/aiotlab/anhtn/emotion_recognition/MAE-DFER/saved/model/readme_checkpoints/finetuning/mafw/fold03/checkpoint.pth",
+    "dataset": "mafw",
+    "skipped": false,
+    "skip_reason": null,
+    "returncode": 0,
+    "prediction": {
+      "class_index": 4,
+      "label": "neutral",
+      "probabilities": {
+        "anger": 0.1134,
+        "disgust": 0.0349,
+        "fear": 0.0767,
+        "happiness": 0.0568,
+        "neutral": 0.2058,
+        "sadness": 0.1618,
+        "surprise": 0.1815,
+        "contempt": 0.0282,
+        "anxiety": 0.0948,
+        "helplessness": 0.0251,
+        "disappointment": 0.0211
+      }
+    },
+    "parse_ok": true
+  },
+  {
+    "readme_weight": "finetuning/mafw/fold04/checkpoint.pth",
+    "checkpoint": "/mnt/disk1/aiotlab/anhtn/emotion_recognition/MAE-DFER/saved/model/readme_checkpoints/finetuning/mafw/fold04/checkpoint.pth",
+    "dataset": "mafw",
+    "skipped": false,
+    "skip_reason": null,
+    "returncode": 0,
+    "prediction": {
+      "class_index": 5,
+      "label": "sadness",
+      "probabilities": {
+        "anger": 0.142,
+        "disgust": 0.0341,
+        "fear": 0.0655,
+        "happiness": 0.0733,
+        "neutral": 0.1433,
+        "sadness": 0.1784,
+        "surprise": 0.172,
+        "contempt": 0.0223,
+        "anxiety": 0.117,
+        "helplessness": 0.0302,
+        "disappointment": 0.0218
+      }
+    },
+    "parse_ok": true
+  },
+  {
+    "readme_weight": "finetuning/mafw/fold05/checkpoint.pth",
+    "checkpoint": "/mnt/disk1/aiotlab/anhtn/emotion_recognition/MAE-DFER/saved/model/readme_checkpoints/finetuning/mafw/fold05/checkpoint.pth",
+    "dataset": "mafw",
+    "skipped": false,
+    "skip_reason": null,
+    "returncode": 0,
+    "prediction": {
+      "class_index": 4,
+      "label": "neutral",
+      "probabilities": {
+        "anger": 0.1407,
+        "disgust": 0.0337,
+        "fear": 0.0932,
+        "happiness": 0.0706,
+        "neutral": 0.196,
+        "sadness": 0.145,
+        "surprise": 0.1495,
+        "contempt": 0.0216,
+        "anxiety": 0.0955,
+        "helplessness": 0.0305,
+        "disappointment": 0.0237
+      }
+    },
+    "parse_ok": true
+  }
+]

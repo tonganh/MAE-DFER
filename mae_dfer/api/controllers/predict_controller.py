@@ -1,7 +1,7 @@
 import asyncio
 from pathlib import Path
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 
 from mae_dfer.inference import speech_emotion_infer as speech_emotion
 
@@ -12,8 +12,22 @@ from mae_dfer.api.services.video_io import ALLOWED_SUFFIX
 router = APIRouter()
 
 
-@router.post("/predict")
-async def predict(file: UploadFile = File(...)):
+@router.post(
+    "/predict",
+    summary="Video + speech emotion + LLM fusion",
+    description=(
+        "Runs the vision model (`predicted_label`, probabilities), Whisper-based **audio** emotion, "
+        "then an OpenAI **fusion** step that sees **only each modality's top label** (no per-class scores in the LLM prompt; "
+        "relative weighting via `API_LLM_EMOTION_AUDIO_WEIGHT`). When the key is present and `API_LLM_EMOTION_EVAL` is not disabled, "
+        "the response includes `llm_emotion_eval` and top-level `fusion_final_emotion` (LLM returns only that label). "
+        "`chunked=true` runs the same pipeline for each temporal chunk (each chunk has its own fusion fields)."
+    ),
+)
+async def predict(
+    file: UploadFile = File(...),
+    chunked: bool = Query(False),
+    chunk_seconds: float = Query(1.5, gt=0),
+):
     if not model_registry.model_loaded():
         raise HTTPException(status_code=503, detail="Model not loaded")
     name = file.filename or "video"
@@ -25,9 +39,15 @@ async def predict(file: UploadFile = File(...)):
         )
     content = await file.read()
     try:
+        if chunked:
+            return await asyncio.to_thread(
+                inference_service.predict_bytes_chunked_sync, content, name, chunk_seconds
+            )
         return await asyncio.to_thread(inference_service.predict_bytes_sync, content, name)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
+    except RuntimeError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
 
 
 @router.post("/predict-vega")

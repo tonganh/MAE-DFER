@@ -1,6 +1,8 @@
 import argparse
 import glob
 import os
+import tempfile
+import threading
 from collections import OrderedDict
 from types import SimpleNamespace
 
@@ -24,6 +26,103 @@ DFEW_CLASSES = [
     "Disgust",
     "Fear",
 ]
+
+FERV39K_CLASSES = [
+    "Happy",
+    "Sad",
+    "Neutral",
+    "Angry",
+    "Surprise",
+    "Disgust",
+    "Fear",
+]
+
+MAFW_CLASSES = [
+    "anger",
+    "disgust",
+    "fear",
+    "happiness",
+    "neutral",
+    "sadness",
+    "surprise",
+    "contempt",
+    "anxiety",
+    "helplessness",
+    "disappointment",
+]
+
+_DATASET_CLASS_CONFIG = {
+    "dfew": (7, tuple(DFEW_CLASSES)),
+    "ferv39k": (7, tuple(FERV39K_CLASSES)),
+    "mafw": (11, tuple(MAFW_CLASSES)),
+}
+
+_asr_lock = threading.Lock()
+_asr_pipe = None
+
+
+def _asr_model_id() -> str:
+    return os.environ.get("WHISPER_ASR_MODEL_ID", "openai/whisper-large-v3").strip() or "openai/whisper-large-v3"
+
+
+def _get_asr_pipe():
+    global _asr_pipe
+    with _asr_lock:
+        if _asr_pipe is not None:
+            return _asr_pipe
+        from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
+
+        model_id = _asr_model_id()
+        device = "cuda:0" if torch.cuda.is_available() else "cpu"
+        torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
+        model = AutoModelForSpeechSeq2Seq.from_pretrained(
+            model_id,
+            torch_dtype=torch_dtype,
+            low_cpu_mem_usage=True,
+            use_safetensors=True,
+        )
+        model.to(device)
+        processor = AutoProcessor.from_pretrained(model_id)
+        _asr_pipe = pipeline(
+            "automatic-speech-recognition",
+            model=model,
+            tokenizer=processor.tokenizer,
+            feature_extractor=processor.feature_extractor,
+            torch_dtype=torch_dtype,
+            device=device,
+        )
+        return _asr_pipe
+
+
+def transcribe_video_audio(video_path: str) -> dict:
+    from mae_dfer.inference.speech_emotion_infer import extract_audio_wav
+
+    model_id = _asr_model_id()
+    fd, wav_path = tempfile.mkstemp(suffix=".wav")
+    os.close(fd)
+    try:
+        extract_audio_wav(video_path, wav_path, sample_rate=16000)
+        pipe = _get_asr_pipe()
+        result = pipe(wav_path, chunk_length_s=30, stride_length_s=5)
+        if isinstance(result, dict):
+            text = (result.get("text") or "").strip()
+        else:
+            text = str(result).strip()
+        return {
+            "transcript": text,
+            "whisper_asr_model_id": model_id,
+        }
+    except Exception as e:
+        return {
+            "transcript": None,
+            "transcript_error": str(e),
+            "whisper_asr_model_id": model_id,
+        }
+    finally:
+        try:
+            os.unlink(wav_path)
+        except OSError:
+            pass
 
 
 def load_checkpoint(model, path):
@@ -195,6 +294,7 @@ def preprocess_test_views(buffer, clip_len, short_side_size, test_num_segment, t
 def default_inference_args():
     args = SimpleNamespace(
         nb_classes=7,
+        class_names=tuple(DFEW_CLASSES),
         model="vit_base_dim512_no_depth_patch16_160",
         depth=16,
         num_frames=16,
@@ -220,7 +320,7 @@ def default_inference_args():
     return args
 
 
-def predict_video_file(video_path, model, device, args):
+def predict_video_file(video_path, model, device, args, with_transcript=False):
     buffer = load_video_buffer(video_path, args.num_frames, args.sampling_rate)
     batch = preprocess_test_views(
         buffer,
@@ -237,24 +337,34 @@ def predict_video_file(video_path, model, device, args):
             for i in range(batch.shape[0]):
                 logits = model(batch[i : i + 1])
                 probs_list.append(softmax(logits.float().cpu().numpy().ravel()))
+    names = list(args.class_names)
     avg_prob = np.mean(probs_list, axis=0)
     pred_idx = int(np.argmax(avg_prob))
-    name = DFEW_CLASSES[pred_idx]
-    probs = {c: float(avg_prob[i]) for i, c in enumerate(DFEW_CLASSES)}
-    return {
+    name = names[pred_idx]
+    probs = {c: float(avg_prob[i]) for i, c in enumerate(names)}
+    out = {
         "predicted_class_index": pred_idx,
         "predicted_label": name,
-        "class_names": list(DFEW_CLASSES),
+        "class_names": names,
         "probabilities": probs,
     }
+    if with_transcript:
+        out.update(transcribe_video_audio(video_path))
+    return out
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--video", type=str, required=True, help="Path to .mp4/.avi or folder of frames")
-    parser.add_argument("--checkpoint", type=str, required=True, help="DFEW fine-tuned .pth")
+    parser.add_argument("--checkpoint", type=str, required=True, help="Fine-tuned .pth")
     parser.add_argument("--device", type=str, default="cuda")
-    parser.add_argument("--nb_classes", type=int, default=7)
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default="dfew",
+        choices=tuple(_DATASET_CLASS_CONFIG.keys()),
+        help="Training dataset for this checkpoint (sets class count and label names).",
+    )
     parser.add_argument("--model", type=str, default="vit_base_dim512_no_depth_patch16_160")
     parser.add_argument("--depth", type=int, default=16)
     parser.add_argument("--num_frames", type=int, default=16)
@@ -279,8 +389,16 @@ def main():
     parser.add_argument("--use_mean_pooling", action="store_true", default=True)
     parser.add_argument("--use_cls", action="store_false", dest="use_mean_pooling")
     parser.add_argument("--init_scale", type=float, default=0.001)
+    parser.add_argument(
+        "--transcript",
+        action="store_true",
+        help="Run Whisper ASR on extracted audio and attach transcript fields to the output.",
+    )
     args = parser.parse_args()
     args.lg_region_size = tuple(args.lg_region_size)
+    nb_default, class_names = _DATASET_CLASS_CONFIG[args.dataset]
+    args.nb_classes = nb_default
+    args.class_names = class_names
 
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
 
@@ -289,15 +407,21 @@ def main():
     model.eval()
     model.to(device)
 
-    out = predict_video_file(args.video, model, device, args)
+    out = predict_video_file(args.video, model, device, args, with_transcript=args.transcript)
     pred_idx = out["predicted_class_index"]
     name = out["predicted_label"]
-    avg_prob = np.array([out["probabilities"][c] for c in DFEW_CLASSES])
+    cnames = out["class_names"]
+    avg_prob = np.array([out["probabilities"][c] for c in cnames])
     print("Predicted class index:", pred_idx)
-    print("Predicted label (DFEW):", name)
+    print("Predicted label:", name)
     print("Class probabilities:")
-    for i, c in enumerate(DFEW_CLASSES):
+    for i, c in enumerate(cnames):
         print(f"  {i} {c}: {avg_prob[i]:.4f}")
+    if args.transcript:
+        if out.get("transcript") is not None:
+            print("Transcript:", out["transcript"])
+        elif out.get("transcript_error"):
+            print("Transcript error:", out["transcript_error"])
 
 
 if __name__ == "__main__":

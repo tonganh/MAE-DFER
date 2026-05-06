@@ -226,12 +226,41 @@ mkdir -p saved/model/finetuning/dfew/dfew_fold01
 gdown "https://drive.google.com/uc?id=1wRxwEZlrc3z3DqQ84xm_olmqRsj2obH3" -O saved/model/finetuning/dfew/dfew_fold01/checkpoint.pth
 ```
 
+### Download every published weight (README Drive links)
+
+From the repo root, this stores all **fine-tuned** checkpoints plus the **VoxCeleb2 SSL pretrain** file under `saved/model/readme_checkpoints/` (same layout as `scripts/infer_all_readme_weights.py` expects):
+
+```bash
+python scripts/download_readme_checkpoints.py
+```
+
+Skip the SSL pretrain (large; not runnable with `infer_video.py` as-is):
+
+```bash
+python scripts/download_readme_checkpoints.py --only-finetuned
+```
+
+Uses the same Google Drive download path as the API default checkpoint (`httpx`); no `gdown` required. Re-run with `--force` to overwrite existing files.
+
+### Run `infer_video.py` on one clip with every fine-tuned weight
+
+After downloads, run all **11** fine-tuned checkpoints (DFEW folds 1–5, FERV39k, MAFW folds 1–5) on the same video:
+
+```bash
+python scripts/infer_all_readme_weights.py --video path/to/clip.mp4 --device cuda
+```
+
+Optional: `--json-out results/all_weights_log.json` saves one JSON object per run (checkpoint path, dataset, return code, stdout, stderr). Missing checkpoints are skipped with a hint to run the download script.
+
 ### CLI: single video (`infer_video.py`)
+
+Use `--dataset` so the head size and printed labels match the checkpoint (`dfew` and `ferv39k` are 7-way with the same class order as in `preprocess/ferv39k.py`; `mafw` is 11-way as in `preprocess/mafw.py`):
 
 ```bash
 python infer_video.py \
   --video happy_emotion.mp4 \
   --checkpoint saved/model/finetuning/dfew/dfew_fold01/checkpoint.pth \
+  --dataset dfew \
   --device cuda
 ```
 

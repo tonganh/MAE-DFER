@@ -7,9 +7,12 @@ numpy
 pillow
 fastapi
 uvicorn[standard]
+python-dotenv
 python-multipart
+gdown
 transformers
 librosa
 soundfile
 accelerate
 safetensors
+openai

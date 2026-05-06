@@ -17,6 +17,7 @@ services:
       WS_MAX_SIZE: ${WS_MAX_SIZE:-52428800}
       STREAM_SEGMENT_SEC: ${STREAM_SEGMENT_SEC:-10}
       API_SAVE_DIR: /data/api_saved
+      API_CHUNK_SAVE_ROOT: ${API_CHUNK_SAVE_ROOT:-/data/api_saved}
     volumes:
       - ${CHECKPOINT_DIR:-./saved/model}:/models:ro
       - ${API_SAVE_HOST_DIR:-./data/api_saved}:/data/api_saved

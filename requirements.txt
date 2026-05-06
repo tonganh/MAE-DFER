@@ -4,10 +4,13 @@ opencv-python
 decord
 fastapi
 uvicorn[standard]
+python-dotenv
 python-multipart
 httpx
+gdown
 transformers
 librosa
 soundfile
 accelerate
 safetensors
+openai

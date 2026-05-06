@@ -1,0 +1,1 @@
+python scripts/infer_all_readme_weights.py --video data/test_samples/angry_2.mov --device cuda --json-out results/all_weights_predictions.json
